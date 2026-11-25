@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="工资计">
+<meta name="theme-color" content="#f5f6f8">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="splash-750x1334.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="splash-1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="splash-1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="splash-1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="splash-1290x2796.png">
+<title>工资计</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --text: #1a1a1a; --sub: #8e8e93;
+  --accent: #34c759; --accent-dark: #248a3d;
+  --orange: #ff9500; --danger: #ff3b30;
+  --shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+html, body { margin: 0; padding: 0; background: var(--bg); }
+body {
+  min-height: 100dvh;
+  display: flex; flex-direction: column; align-items: stretch;
+  max-width: 480px; margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  gap: 12px;
+}
+header { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 0; }
+header h1 { font-size: 20px; font-weight: 700; margin: 0; }
+#gearBtn {
+  background: none; border: none; font-size: 22px; color: var(--sub);
+  padding: 6px; cursor: pointer; transition: transform .15s ease;
+}
+#gearBtn:active { transform: rotate(45deg) scale(.9); }
+.card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); }
+/* ---- 主金额卡片 ---- */
+#hero { padding: 20px 20px 16px; }
+.hero-label { font-size: 14px; color: var(--sub); font-weight: 600; }
+#amount {
+  font-size: 56px; font-weight: 800; letter-spacing: -1px;
+  margin: 4px 0 8px; line-height: 1.1; font-variant-numeric: tabular-nums;
+}
+#amount .yen { font-size: 32px; font-weight: 700; margin-right: 4px; }
+#amount.goal-hit { color: var(--accent-dark); }
+#statusRow { display: flex; align-items: center; gap: 7px; font-size: 14px; color: var(--sub); font-weight: 500; }
+#statusDot { width: 9px; height: 9px; border-radius: 50%; background: #c7c7cc; }
+#statusDot.working { background: var(--accent); animation: dotPulse 1.2s ease-in-out infinite; }
+#statusDot.paused { background: var(--orange); }
+@keyframes dotPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(1.35); } }
+/* ---- 目标进度 ---- */
+#goal { margin-top: 14px; }
+#goalBar { height: 8px; background: #efeff1; border-radius: 4px; overflow: hidden; }
+#goalFill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent), #7ddc8f);
+  border-radius: 4px; transition: width .4s ease;
+}
+#goalMeta { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); margin-top: 6px; font-weight: 500; }
+#goalDone { display: none; text-align: center; margin-top: 8px; font-size: 15px; font-weight: 700; color: var(--accent-dark); }
+/* ---- 控制按钮 ---- */
+#controls { display: flex; flex-direction: column; gap: 10px; }
+#mainBtn {
+  height: 56px; border: none; border-radius: 18px;
+  background: var(--accent); color: #fff;
+  font-size: 18px; font-weight: 700; font-family: inherit;
+  box-shadow: 0 6px 18px rgba(52,199,89,.35);
+  transition: transform .15s ease, background .2s ease;
+  cursor: pointer;
+}
+#mainBtn:active { transform: scale(.97); }
+#mainBtn.paused { background: var(--orange); box-shadow: 0 6px 18px rgba(255,149,0,.35); }
+#stopBtn {
+  height: 46px; border: none; border-radius: 18px;
+  background: #f2f2f7; color: var(--danger);
+  font-size: 16px; font-weight: 600; font-family: inherit;
+  display: none; cursor: pointer; transition: transform .15s ease;
+}
+#stopBtn:active { transform: scale(.97); }
+#stopBtn.show { display: block; }
+#autoNote {
+  display: none; height: 46px; border-radius: 18px;
+  background: #e9f9ee; color: var(--accent-dark);
+  font-size: 15px; font-weight: 600;
+  align-items: center; justify-content: center;
+}
+#controls.autoMode #mainBtn, #controls.autoMode #stopBtn { display: none; }
+#controls.autoMode #autoNote { display: flex; }
+.sheet-row input[type="checkbox"] { accent-color: var(--accent); }
+/* ---- 统计卡片 ---- */
+#stats { display: flex; gap: 10px; }
+#stats .card { flex: 1; padding: 14px 10px; text-align: center; }
+.stat-label { font-size: 12px; color: var(--sub); font-weight: 500; }
+.stat-value { font-size: 17px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+/* ---- 今日记录 ---- */
+#listCard { padding: 14px 16px 12px; }
+#listTitle { font-size: 13px; font-weight: 700; color: var(--sub); margin: 0 0 8px; }
+#todayList { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+#todayList li {
+  display: flex; justify-content: space-between; padding: 8px 0;
+  border-top: 1px solid #f2f2f7; font-variant-numeric: tabular-nums;
+}
+#todayList li span:last-child { font-weight: 700; }
+#emptyTip { color: var(--sub); font-size: 13px; padding: 6px 0 4px; display: none; }
+/* ---- 设置面板 ---- */
+#mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 20;
+}
+#mask.show { opacity: 1; pointer-events: auto; }
+#sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+  background: var(--card); border-radius: 22px 22px 0 0;
+  padding: 18px 20px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  max-width: 480px; margin: 0 auto;
+  transform: translateY(105%); transition: transform .3s cubic-bezier(.2,.9,.3,1);
+}
+#sheet.show { transform: translateY(0); }
+#sheet h2 { margin: 0 0 14px; font-size: 18px; }
+.sheet-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-top: 1px solid #f2f2f7; font-size: 15px;
+}
+.sheet-row input {
+  width: 90px; border: none; background: #f2f2f7; border-radius: 10px;
+  padding: 8px 10px; font-size: 15px; text-align: right; font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+#sheetDone {
+  width: 100%; height: 50px; margin-top: 14px; border: none; border-radius: 14px;
+  background: var(--accent); color: #fff; font-size: 16px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+}
+#sheetDanger { display: flex; gap: 10px; margin-top: 10px; }
+#sheetDanger button {
+  flex: 1; height: 40px; border: none; border-radius: 12px;
+  background: #f2f2f7; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+#resetBtn { color: var(--sub); }
+#clearBtn { color: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <h1>工资计</h1>
+  <button id="gearBtn">⚙&#xFE0E;</button>
+</header>
+
+<section class="card" id="hero">
+  <div class="hero-label">今日收入 (元)</div>
+  <div id="amount"><span class="yen">¥</span><span id="amountInt">0</span><span id="amountDec">.00</span></div>
+  <div id="statusRow"><span id="statusDot"></span><span id="statusText">未开始</span><span>· 已工作 <span id="workedTime">0:00:00</span></span></div>
+  <div id="goal">
+    <div id="goalBar"><div id="goalFill"></div></div>
+    <div id="goalMeta"><span id="goalInfo">¥0.00 / ¥300</span><span id="goalPct">0%</span></div>
+    <div id="goalDone">🎉 今日目标达成！</div>
+  </div>
+</section>
+
+<section id="controls">
+  <button id="mainBtn">开始工作</button>
+  <button id="stopBtn">结束工作</button>
+  <div id="autoNote">⏱ 工作时段自动计薪中</div>
+</section>
+
+<section id="stats">
+  <div class="card"><div class="stat-label">本周</div><div class="stat-value" id="weekAmt">¥0.00</div></div>
+  <div class="card"><div class="stat-label">累计</div><div class="stat-value" id="totalAmt">¥0.00</div></div>
+  <div class="card"><div class="stat-label">平均时薪</div><div class="stat-value" id="avgAmt">¥0.0</div></div>
+</section>
+
+<section class="card" id="listCard">
+  <p id="listTitle">今日记录</p>
+  <ul id="todayList"></ul>
+  <p id="emptyTip">暂无记录，点击"开始工作"</p>
+</section>
+
+<div id="mask"></div>
+<div id="sheet">
+  <h2>设置</h2>
+  <div class="sheet-row"><span>时薪 (元/小时)</span><input id="inRate" type="number" inputmode="decimal" step="0.5" min="0"></div>
+  <div class="sheet-row"><span>每日目标 (元)</span><input id="inGoal" type="number" inputmode="decimal" step="10" min="0"></div>
+  <div class="sheet-row"><span>加班倍率 (×)</span><input id="inOt" type="number" inputmode="decimal" step="0.1" min="1"></div>
+  <div class="sheet-row"><span>加班起点 (小时/天)</span><input id="inOtAfter" type="number" inputmode="decimal" step="0.5" min="1"></div>
+  <div class="sheet-row"><span>自动计薪（按作息）</span><input id="inAuto" type="checkbox"></div>
+  <button id="sheetDone">完成</button>
+  <div id="sheetDanger">
+    <button id="resetBtn">恢复默认设置</button>
+    <button id="clearBtn">清除全部数据</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const DAY = 86400000, KEY = "earn-state-v2";
+
+/* ---------- 状态 ---------- */
+const DEFAULTS = { rate: 39.08, goal: 312, otRate: 1.5, otAfter: 8, auto: true };   // 月薪 6800 ÷ 21.75 天 ÷ 8 小时 ≈ 39.08 元/时，日目标 = 8 小时满勤
+const SCHEDULE = [[8 * 60, 12 * 60], [13 * 60, 17 * 60]];   // 作息：8:00-12:00 / 13:00-17:00（分钟），双休
+let S = null;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+if (!S || typeof S !== "object") S = { segments: [], active: null, state: "idle" };
+for (const k in DEFAULTS) if (S[k] == null) S[k] = DEFAULTS[k];
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ---------- 时间工具 ---------- */
+function dayStart(ts) { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function weekStart(ts) { const wd = (new Date(ts).getDay() + 6) % 7; return dayStart(ts) - wd * DAY; }
+function fmtHMS(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+}
+function fmtMoney(v) {
+  return Number(v.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
+/* ---------- 收入计算：作息自动计薪 + 手动加班段，按天聚合后应用加班倍率 ---------- */
+function allSegs() {
+  return S.segments.concat(S.active ? [{ start: S.active.start, end: Date.now() }] : []);
+}
+function isScheduled(now) {
+  if (!S.auto) return false;
+  const wd = new Date(now).getDay();
+  if (wd === 0 || wd === 6) return false;   // 双休
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return SCHEDULE.some(([m0, m1]) => mins >= m0 && mins < m1);
+}
+function workedByDay(a, b, segsOverride) {
+  const segs = segsOverride !== undefined ? segsOverride : allSegs();
+  const days = new Map();
+  const add = (d, ms) => days.set(d, (days.get(d) || 0) + ms);
+  // 作息自动时段（周一~周五 8:00-12:00 / 13:00-17:00）
+  if (S.auto) {
+    for (let d = dayStart(a); d < b; d += DAY) {
+      const wd = new Date(d).getDay();
+      if (wd === 0 || wd === 6) continue;
+      for (const [m0, m1] of SCHEDULE) {
+        const s0 = Math.max(d + m0 * 60000, a), s1 = Math.min(d + m1 * 60000, b);
+        if (s1 > s0) add(d, s1 - s0);
+      }
+    }
+  }
+  // 手动时段（加班）：与作息重叠的部分不计，避免重复计薪
+  for (const s of segs) {
+    const s0 = Math.max(s.start, a), s1 = Math.min(s.end, b);
+    if (s1 <= s0) continue;
+    for (let d = dayStart(s0); d < s1; d += DAY) {
+      const d0 = Math.max(s0, d), d1 = Math.min(s1, d + DAY);
+      let ms = d1 - d0;
+      if (S.auto) {
+        const wd = new Date(d).getDay();
+        if (wd !== 0 && wd !== 6) {
+          for (const [m0, m1] of SCHEDULE) {
+            const t0 = Math.max(d + m0 * 60000, d0), t1 = Math.min(d + m1 * 60000, d1);
+            if (t1 > t0) ms -= t1 - t0;
+          }
+        }
+      }
+      if (ms > 0) add(d, ms);
+    }
+  }
+  return days;
+}
+function earningsIn(a, b, segsOverride) {
+  let total = 0;
+  for (const ms of workedByDay(a, b, segsOverride).values()) {
+    const secs = ms / 1000;
+    const reg = Math.min(secs, S.otAfter * 3600);
+    const ot = secs - reg;
+    total += (reg * S.rate + ot * S.rate * S.otRate) / 3600;
+  }
+  return total;
+}
+function workedSecs(a, b) {
+  let ms = 0;
+  for (const v of workedByDay(a, b).values()) ms += v;
+  return ms / 1000;
+}
+
+/* ---------- 状态机：idle → working ⇄ paused ---------- */
+function setState(st) { S.state = st; save(); render(); }
+function render() {
+  const st = S.state;
+  const now = Date.now();
+  const schedNow = isScheduled(now);
+  let statusText, dotCls;
+  if (st === "working") { statusText = S.auto ? "加班中" : "工作中"; dotCls = "working"; }
+  else if (st === "paused") { statusText = "已暂停"; dotCls = "paused"; }
+  else if (schedNow) { statusText = "自动计薪中"; dotCls = "working"; }
+  else {
+    const wd = new Date(now).getDay();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    if (wd === 0 || wd === 6) statusText = "双休日";
+    else if (S.auto && mins >= 12 * 60 && mins < 13 * 60) statusText = "午休中";
+    else statusText = "已下班";
+    dotCls = "";
+  }
+  $("statusText").textContent = statusText;
+  $("statusDot").className = dotCls;
+  $("mainBtn").textContent = st === "idle" ? (S.auto ? "开始加班" : "开始工作") : st === "working" ? "暂停" : "继续";
+  $("mainBtn").classList.toggle("paused", st === "paused");
+  $("stopBtn").classList.toggle("show", st !== "idle");
+  $("controls").classList.toggle("autoMode", st === "idle" && schedNow);
+}
+$("mainBtn").addEventListener("click", () => {
+  if (S.state === "idle") { S.active = { start: Date.now() }; setState("working"); }
+  else if (S.state === "working") { S.segments.push({ start: S.active.start, end: Date.now() }); S.active = null; setState("paused"); }
+  else { S.active = { start: Date.now() }; setState("working"); }
+});
+$("stopBtn").addEventListener("click", () => {
+  if (S.active) { S.segments.push({ start: S.active.start, end: Date.now() }); S.active = null; }
+  setState("idle");
+});
+
+/* ---------- 设置面板 ---------- */
+$("gearBtn").addEventListener("click", () => {
+  $("inRate").value = S.rate; $("inGoal").value = S.goal;
+  $("inOt").value = S.otRate; $("inOtAfter").value = S.otAfter;
+  $("inAuto").checked = !!S.auto;
+  $("mask").classList.add("show"); $("sheet").classList.add("show");
+});
+function closeSheet() { $("mask").classList.remove("show"); $("sheet").classList.remove("show"); }
+$("mask").addEventListener("click", closeSheet);
+$("sheetDone").addEventListener("click", () => {
+  S.rate = Math.max(0, parseFloat($("inRate").value) || 0);
+  S.goal = Math.max(0, parseFloat($("inGoal").value) || 0);
+  S.otRate = Math.max(1, parseFloat($("inOt").value) || 1);
+  S.otAfter = Math.max(0.5, parseFloat($("inOtAfter").value) || 8);
+  S.auto = $("inAuto").checked;
+  save(); closeSheet(); render();
+});
+$("resetBtn").addEventListener("click", () => { for (const k in DEFAULTS) S[k] = DEFAULTS[k]; save(); closeSheet(); });
+$("clearBtn").addEventListener("click", () => {
+  if (confirm("确定清除全部工作记录和设置？此操作不可恢复。")) {
+    S = { segments: [], active: null, state: "idle" };
+    for (const k in DEFAULTS) S[k] = DEFAULTS[k];
+    save(); closeSheet(); render();
+  }
+});
+
+/* ---------- 实时刷新 ---------- */
+function tick() {
+  const now = Date.now();
+  const day = dayStart(now);
+  render();   // 状态和按钮随墙钟时间自动切换（如 17:00 后从自动计薪切回可点状态）
+  const today = earningsIn(day, now + 1000);
+  const t = Number(today.toFixed(2));
+  $("amountInt").textContent = Math.floor(t).toLocaleString("en-US");
+  $("amountDec").textContent = "." + String(Math.round((t - Math.floor(t)) * 100)).padStart(2, "0");
+  $("amount").classList.toggle("goal-hit", today >= S.goal && S.goal > 0);
+  $("workedTime").textContent = fmtHMS(workedSecs(day, now + 1000));
+  const pct = S.goal > 0 ? Math.min(100, today / S.goal * 100) : 0;
+  $("goalFill").style.width = pct + "%";
+  $("goalInfo").textContent = "¥" + fmtMoney(today) + " / ¥" + S.goal;
+  $("goalPct").textContent = Math.floor(pct) + "%";
+  $("goalDone").style.display = (today >= S.goal && S.goal > 0) ? "block" : "none";
+  $("weekAmt").textContent = "¥" + fmtMoney(earningsIn(weekStart(now), now + 1000));
+  $("totalAmt").textContent = "¥" + fmtMoney(earningsIn(0, now + 1000));
+  const totSec = workedSecs(0, now + 1000), totEarn = earningsIn(0, now + 1000);
+  $("avgAmt").textContent = "¥" + (totSec > 0 ? (totEarn / (totSec / 3600)).toFixed(1) : "0.0");
+
+  // 今日记录列表：作息自动时段 + 手动加班段（每段金额 = 从今日总收入中移除该段后的差额）
+  const rows = [];
+  if (S.auto) {
+    const wd = new Date(now).getDay();
+    if (wd !== 0 && wd !== 6) {
+      for (const [m0, m1] of SCHEDULE) {
+        const ws = day + m0 * 60000, we = day + m1 * 60000;
+        if (ws < now) rows.push({ s: { start: ws, end: Math.min(we, now) }, active: false, sched: true });
+      }
+    }
+  }
+  for (const s of S.segments) if (s.end > day) rows.push({ s, active: false, sched: false });
+  if (S.active) rows.push({ s: { start: S.active.start, end: now }, active: true, sched: false });
+  rows.sort((a, b) => b.s.start - a.s.start);
+  const totalToday = today;
+  const ul = $("todayList");
+  ul.innerHTML = "";
+  $("emptyTip").style.display = rows.length ? "none" : "block";
+  for (const r of rows) {
+    let amt;
+    if (r.sched) {
+      amt = (r.s.end - r.s.start) / 3600000 * S.rate;   // 作息时段恒为常规时薪
+    } else {
+      let others;
+      if (r.active) others = S.segments;
+      else others = S.segments.filter(x => x !== r.s).concat(S.active ? [{ start: S.active.start, end: now }] : []);
+      amt = totalToday - earningsIn(day, now + 1000, others);
+    }
+    const li = document.createElement("li");
+    const left = r.sched
+      ? fmtTime(r.s.start) + " – " + fmtTime(r.s.end) + " · 自动"
+      : fmtTime(r.s.start) + " – " + (r.active ? "进行中" : fmtTime(r.s.end));
+    li.innerHTML = "<span>" + left + "</span><span>+¥" + fmtMoney(amt) + "</span>";
+    ul.appendChild(li);
+  }
+}
+
+/* ---------- 启动 ---------- */
+render();
+tick();
+setInterval(tick, 250);
+</script>
+</body>
+</html>

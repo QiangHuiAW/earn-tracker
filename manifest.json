@@ -1,0 +1,14 @@
+{
+  "name": "工资计",
+  "short_name": "工资计",
+  "description": "实时查看自己挣了多少钱",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6f8",
+  "theme_color": "#f5f6f8",
+  "icons": [
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
