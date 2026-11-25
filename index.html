@@ -386,9 +386,16 @@ function tick() {
   const day = dayStart(now);
   render();   // 状态和按钮随墙钟时间自动切换（如 17:00 后从自动计薪切回可点状态）
   const today = earningsIn(day, now + 1000);
-  const t = Number(today.toFixed(2));
-  $("amountInt").textContent = Math.floor(t).toLocaleString("en-US");
-  $("amountDec").textContent = "." + String(Math.round((t - Math.floor(t)) * 100)).padStart(2, "0");
+  const working = S.state === "working" || (S.state === "idle" && isScheduled(now));
+  if (working) {   // 工作中显示三位小数，千分位每秒跳约 10 次，肉眼可见地涨
+    const thou = Math.floor(today * 1000);
+    $("amountInt").textContent = Math.floor(thou / 1000).toLocaleString("en-US");
+    $("amountDec").textContent = "." + String(thou % 1000).padStart(3, "0");
+  } else {
+    const t = Number(today.toFixed(2));
+    $("amountInt").textContent = Math.floor(t).toLocaleString("en-US");
+    $("amountDec").textContent = "." + String(Math.round((t - Math.floor(t)) * 100)).padStart(2, "0");
+  }
   $("amount").classList.toggle("goal-hit", today >= S.goal && S.goal > 0);
   $("workedTime").textContent = fmtHMS(workedSecs(day, now + 1000));
   const pct = S.goal > 0 ? Math.min(100, today / S.goal * 100) : 0;
