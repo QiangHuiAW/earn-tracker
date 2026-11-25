@@ -141,6 +141,16 @@ header h1 { font-size: 20px; font-weight: 700; margin: 0; }
   background: var(--accent); color: #fff; font-size: 16px; font-weight: 700;
   font-family: inherit; cursor: pointer;
 }
+#toast {
+  position: fixed; left: 50%; bottom: 14%;
+  transform: translate(-50%, 20px);
+  background: rgba(0,0,0,.75); color: #fff;
+  padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 500;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity .25s ease, transform .25s ease;
+  max-width: 80%;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
 #sheetDanger { display: flex; gap: 10px; margin-top: 10px; }
 #sheetDanger button {
   flex: 1; height: 40px; border: none; border-radius: 12px;
@@ -153,7 +163,7 @@ header h1 { font-size: 20px; font-weight: 700; margin: 0; }
 <body>
 <header>
   <h1>工资计</h1>
-  <button id="gearBtn">⚙&#xFE0E;</button>
+  <button id="gearBtn" type="button">⚙&#xFE0E;</button>
 </header>
 
 <section class="card" id="hero">
@@ -168,9 +178,9 @@ header h1 { font-size: 20px; font-weight: 700; margin: 0; }
 </section>
 
 <section id="controls">
-  <button id="mainBtn">开始工作</button>
-  <button id="stopBtn">结束工作</button>
-  <div id="autoNote">⏱ 工作时段自动计薪中</div>
+  <button id="mainBtn" type="button">开始工作</button>
+  <button id="stopBtn" type="button">结束工作</button>
+  <div id="autoNote">⏱ 工作时段自动计薪中 · 无需操作</div>
 </section>
 
 <section id="stats">
@@ -185,6 +195,7 @@ header h1 { font-size: 20px; font-weight: 700; margin: 0; }
   <p id="emptyTip">暂无记录，点击"开始工作"</p>
 </section>
 
+<div id="toast"></div>
 <div id="mask"></div>
 <div id="sheet">
   <h2>设置</h2>
@@ -193,10 +204,10 @@ header h1 { font-size: 20px; font-weight: 700; margin: 0; }
   <div class="sheet-row"><span>加班倍率 (×)</span><input id="inOt" type="number" inputmode="decimal" step="0.1" min="1"></div>
   <div class="sheet-row"><span>加班起点 (小时/天)</span><input id="inOtAfter" type="number" inputmode="decimal" step="0.5" min="1"></div>
   <div class="sheet-row"><span>自动计薪（按作息）</span><input id="inAuto" type="checkbox"></div>
-  <button id="sheetDone">完成</button>
+  <button id="sheetDone" type="button">完成</button>
   <div id="sheetDanger">
-    <button id="resetBtn">恢复默认设置</button>
-    <button id="clearBtn">清除全部数据</button>
+    <button id="resetBtn" type="button">恢复默认设置</button>
+    <button id="clearBtn" type="button">清除全部数据</button>
   </div>
 </div>
 
@@ -293,6 +304,21 @@ function workedSecs(a, b) {
   return ms / 1000;
 }
 
+/* ---------- 点击绑定与反馈 ---------- */
+let toastTimer = null;
+function toast(msg) {
+  $("toast").textContent = msg;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1600);
+}
+function onTap(el, fn) {   // pointerup + click 双保险（iOS Safari 兼容），400ms 内去重
+  let last = 0;
+  const run = e => { const t = Date.now(); if (t - last > 400) { last = t; fn(e); } };
+  el.addEventListener("pointerup", run);
+  el.addEventListener("click", run);
+}
+
 /* ---------- 状态机：idle → working ⇄ paused ---------- */
 function setState(st) { S.state = st; save(); render(); }
 function render() {
@@ -318,18 +344,18 @@ function render() {
   $("stopBtn").classList.toggle("show", st !== "idle");
   $("controls").classList.toggle("autoMode", st === "idle" && schedNow);
 }
-$("mainBtn").addEventListener("click", () => {
-  if (S.state === "idle") { S.active = { start: Date.now() }; setState("working"); }
-  else if (S.state === "working") { S.segments.push({ start: S.active.start, end: Date.now() }); S.active = null; setState("paused"); }
-  else { S.active = { start: Date.now() }; setState("working"); }
+onTap($("mainBtn"), () => {
+  if (S.state === "idle") { S.active = { start: Date.now() }; setState("working"); toast("开始加班 ✓"); }
+  else if (S.state === "working") { S.segments.push({ start: S.active.start, end: Date.now() }); S.active = null; setState("paused"); toast("已暂停"); }
+  else { S.active = { start: Date.now() }; setState("working"); toast("继续加班 ✓"); }
 });
-$("stopBtn").addEventListener("click", () => {
+onTap($("stopBtn"), () => {
   if (S.active) { S.segments.push({ start: S.active.start, end: Date.now() }); S.active = null; }
-  setState("idle");
+  setState("idle"); toast("已结束工作");
 });
 
 /* ---------- 设置面板 ---------- */
-$("gearBtn").addEventListener("click", () => {
+onTap($("gearBtn"), () => {
   $("inRate").value = S.rate; $("inGoal").value = S.goal;
   $("inOt").value = S.otRate; $("inOtAfter").value = S.otAfter;
   $("inAuto").checked = !!S.auto;
@@ -337,20 +363,20 @@ $("gearBtn").addEventListener("click", () => {
 });
 function closeSheet() { $("mask").classList.remove("show"); $("sheet").classList.remove("show"); }
 $("mask").addEventListener("click", closeSheet);
-$("sheetDone").addEventListener("click", () => {
+onTap($("sheetDone"), () => {
   S.rate = Math.max(0, parseFloat($("inRate").value) || 0);
   S.goal = Math.max(0, parseFloat($("inGoal").value) || 0);
   S.otRate = Math.max(1, parseFloat($("inOt").value) || 1);
   S.otAfter = Math.max(0.5, parseFloat($("inOtAfter").value) || 8);
   S.auto = $("inAuto").checked;
-  save(); closeSheet(); render();
+  save(); closeSheet(); render(); toast("已保存");
 });
-$("resetBtn").addEventListener("click", () => { for (const k in DEFAULTS) S[k] = DEFAULTS[k]; save(); closeSheet(); });
-$("clearBtn").addEventListener("click", () => {
+onTap($("resetBtn"), () => { for (const k in DEFAULTS) S[k] = DEFAULTS[k]; save(); closeSheet(); toast("已恢复默认"); });
+onTap($("clearBtn"), () => {
   if (confirm("确定清除全部工作记录和设置？此操作不可恢复。")) {
     S = { segments: [], active: null, state: "idle" };
     for (const k in DEFAULTS) S[k] = DEFAULTS[k];
-    save(); closeSheet(); render();
+    save(); closeSheet(); render(); toast("已清除");
   }
 });
 
